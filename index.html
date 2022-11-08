@@ -75,6 +75,7 @@
         const textureLoader = new THREE.TextureLoader();
         const saturnTexture = textureLoader.load('assets/texture/8k_saturn.jpg');
         const saturnRingTexture = textureLoader.load('assets/texture/saturn_circle.png');
+        const wheelTexture = textureLoader.load('assets/texture/tire.png');
 
         const saturn = new THREE.SphereGeometry(8, 80, 80);
         const saturnMaterial = new THREE.MeshPhongMaterial({
@@ -99,6 +100,7 @@
         moonWalkerGroup = new THREE.Group();
         const moonWalkerBodyGroup = new THREE.Group();
         const moonWalkerSuspensionGroup = new THREE.Group();
+        const moonWalkerWheelsGroup = new THREE.Group();
 
         //test
         const moonWalkerAxesHelper = new THREE.AxesHelper(10);
@@ -137,9 +139,97 @@
         moonWalkerSuspensionMesh3.rotation.x = THREE.MathUtils.degToRad(90);
         moonWalkerSuspensionMesh3.position.y = -0.35;
         moonWalkerSuspensionMesh3.position.x = -2;
-        moonWalkerSuspensionGroup.add(moonWalkerSuspensionMesh1, moonWalkerSuspensionMesh2, moonWalkerSuspensionMesh3);
 
-        moonWalkerGroup.add(moonWalkerBodyGroup, moonWalkerSuspensionGroup, moonWalkerAxesHelper);
+        //kerekek elé 4x
+        const moonWalkerSuspension4 = new THREE.BoxGeometry(0.5 ,2, 0.5, 4)
+        const moonWalkerSuspensionMaterial4 = new THREE.MeshBasicMaterial({
+            color: 0xffffff
+        });
+        const moonWalkerSuspensionMesh4 = new THREE.Mesh(moonWalkerSuspension4, moonWalkerSuspensionMaterial4);
+        moonWalkerSuspensionMesh4.position.y = -1.1;
+        moonWalkerSuspensionMesh4.position.x = -2.5;
+        moonWalkerSuspensionMesh4.position.z = 4.25;
+
+        const moonWalkerSuspension5 = new THREE.BoxGeometry(0.5 ,2, 0.5, 4)
+        const moonWalkerSuspensionMaterial5 = new THREE.MeshBasicMaterial({
+            color: 0xffffff
+        });
+        const moonWalkerSuspensionMesh5 = new THREE.Mesh(moonWalkerSuspension5, moonWalkerSuspensionMaterial5);
+        moonWalkerSuspensionMesh5.position.y = -1.1;
+        moonWalkerSuspensionMesh5.position.x = -2.5;
+        moonWalkerSuspensionMesh5.position.z = -4.25;
+
+        const moonWalkerSuspension6 = new THREE.BoxGeometry(0.5 ,2, 0.5, 4)
+        const moonWalkerSuspensionMaterial6 = new THREE.MeshBasicMaterial({
+            color: 0xffffff
+        });
+        const moonWalkerSuspensionMesh6 = new THREE.Mesh(moonWalkerSuspension6, moonWalkerSuspensionMaterial6);
+        moonWalkerSuspensionMesh6.position.y = -1.1;
+        moonWalkerSuspensionMesh6.position.x = 2.5;
+        moonWalkerSuspensionMesh6.position.z = -4.25;
+
+        const moonWalkerSuspension7 = new THREE.BoxGeometry(0.5 ,2, 0.5, 4)
+        const moonWalkerSuspensionMaterial7 = new THREE.MeshBasicMaterial({
+            color: 0xffffff
+        });
+        const moonWalkerSuspensionMesh7 = new THREE.Mesh(moonWalkerSuspension7, moonWalkerSuspensionMaterial7);
+        moonWalkerSuspensionMesh7.position.y = -1.1;
+        moonWalkerSuspensionMesh7.position.x = 2.5;
+        moonWalkerSuspensionMesh7.position.z = 4.25;
+        moonWalkerSuspensionGroup.add(
+            moonWalkerSuspensionMesh1,
+            moonWalkerSuspensionMesh2,
+            moonWalkerSuspensionMesh3,
+            moonWalkerSuspensionMesh4,
+            moonWalkerSuspensionMesh5,
+            moonWalkerSuspensionMesh6,
+            moonWalkerSuspensionMesh7
+        );
+
+        //kerekek 4x
+        const moonWalkerWheelMaterialTexture = new THREE.MeshBasicMaterial({
+            map: wheelTexture
+        });
+        const moonWalkerWheelMaterialColor = new THREE.MeshBasicMaterial({
+            color: 0x111111
+        });
+        const wheelMaterials = [
+            moonWalkerWheelMaterialColor,
+            moonWalkerWheelMaterialTexture,
+            moonWalkerWheelMaterialTexture
+        ]
+
+        const moonWalkerWheel1 = new THREE.CylinderGeometry(1.5, 1.5, 0.5, 32)
+        const moonWalkerWheelMesh1 = new THREE.Mesh(moonWalkerWheel1, wheelMaterials);
+        moonWalkerWheelMesh1.rotation.z = THREE.MathUtils.degToRad(90);
+        moonWalkerWheelMesh1.position.y = -2.1;
+        moonWalkerWheelMesh1.position.x = 3;
+        moonWalkerWheelMesh1.position.z = 4.25;
+
+        const moonWalkerWheel2 = new THREE.CylinderGeometry(1.5, 1.5, 0.5, 32)
+        const moonWalkerWheelMesh2 = new THREE.Mesh(moonWalkerWheel2, wheelMaterials);
+        moonWalkerWheelMesh2.rotation.z = THREE.MathUtils.degToRad(90);
+        moonWalkerWheelMesh2.position.y = -2.1;
+        moonWalkerWheelMesh2.position.x = 3;
+        moonWalkerWheelMesh2.position.z = -4.25;
+
+        const moonWalkerWheel3 = new THREE.CylinderGeometry(1.5, 1.5, 0.5, 32)
+        const moonWalkerWheelMesh3 = new THREE.Mesh(moonWalkerWheel3, wheelMaterials);
+        moonWalkerWheelMesh3.rotation.z = THREE.MathUtils.degToRad(90);
+        moonWalkerWheelMesh3.position.y = -2.1;
+        moonWalkerWheelMesh3.position.x = -3;
+        moonWalkerWheelMesh3.position.z = 4.25;
+
+        const moonWalkerWheel4 = new THREE.CylinderGeometry(1.5, 1.5, 0.5, 32)
+        const moonWalkerWheelMesh4 = new THREE.Mesh(moonWalkerWheel4, wheelMaterials);
+        moonWalkerWheelMesh4.rotation.z = THREE.MathUtils.degToRad(90);
+        moonWalkerWheelMesh4.position.y = -2.1;
+        moonWalkerWheelMesh4.position.x = -3;
+        moonWalkerWheelMesh4.position.z = -4.25;
+
+        moonWalkerWheelsGroup.add(moonWalkerWheelMesh1, moonWalkerWheelMesh2, moonWalkerWheelMesh3, moonWalkerWheelMesh4);
+
+        moonWalkerGroup.add(moonWalkerBodyGroup, moonWalkerSuspensionGroup, moonWalkerWheelsGroup, moonWalkerAxesHelper);
         scene.add(moonWalkerGroup);
 
 

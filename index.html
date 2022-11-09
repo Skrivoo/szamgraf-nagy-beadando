@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="hu">
+<html lang="hu" xmlns="http://www.w3.org/1999/html">
 
 <head>
     <meta charset=utf-8>
@@ -14,6 +14,17 @@
             width: 100%;
             height: 100%
         }
+
+        #info {
+            position: absolute;
+            top: 0;
+            width: min-content;
+            display: inline-flex;
+            text-align: left;
+            z-index: 100;
+            background: gray;
+            opacity: .55;
+        }
     </style>
 </head>
 
@@ -24,38 +35,107 @@
 {
     "imports": {
         "three": "./js-r143/build/three.module.js",
-        "TrackballControls": "./js-r143/examples/jsm/controls/TrackballControls.js"
+        "OBJLoader": "./js-r143/examples/jsm/loaders/OBJLoader.js",
+        "TrackballControls": "./js-r143/examples/jsm/controls/TrackballControls.js",
+        "lil-gui": "./js-r143/examples/jsm/libs/lil-gui.module.min.js",
+        "stats": "./js-r143/examples/jsm/libs/stats.module.js"
     }
 }
+
+
+
+
+
 
 
 </script>
 
 <script type="module">
     import * as THREE from 'three';
+    import {OBJLoader} from 'OBJLoader';
     import {TrackballControls} from 'TrackballControls';
+    import {GUI} from 'lil-gui';
 
-    // Globális változók
     let WIDTH, HEIGHT, aspectRatio;
     let scene, camera;
+    let groundGroup;
+    let carGroundGroup;
     let saturnGroup;
     let moonWalkerGroup;
+    let rocketGroup;
+    let rocketFire;
+    let rocketFireGroup;
+    let buildingGroup;
+    let sunLight;
     let renderer;
     let controls;
+    let infoElement;
+    let ctrl, stats;
+    let isDay;
+    let isCarLightOn;
+    let sunMesh;
+    let counter;
 
-    init();
-    animate();
+    let guiParams = {
+        carLight: function () {
+            if (isCarLightOn) {
+                moonWalkerGroup.children[3].isLight = false;
+                isCarLightOn = false;
+            } else {
+                moonWalkerGroup.children[3].isLight = true;
+                isCarLightOn = true;
+            }
+        },
+        dayNight: function () {
+            if (isDay) {
+                sunMesh.material.emissiveIntensity = 0
+                sunLight.intensity = 0.0;
+                isDay = false;
+            } else {
+                sunMesh.material.emissiveIntensity = 1
+                sunLight.intensity = 1.0;
+                isDay = true;
+            }
+        },
+        buildingVisibility: function () {
+            //buildingGroup
+            buildingGroup.visible = !buildingGroup.visible
+        }
+    };
+
+    loader();
+
+    function loader() {
+        let loader = new OBJLoader();
+        loader.load(
+            'assets/models/rocket.obj',
+            function (loaded) {
+                rocketGroup = loaded;
+                rocketGroup.scale.set(1, 1, 1);
+                rocketGroup.traverse(function (child) {
+                    if (child instanceof THREE.Mesh) {
+                        console.log('mesh found in loaded group');
+                        child.material = new THREE.MeshPhongMaterial({color: 0x2080f0, side: THREE.DoubleSide});
+                    }
+                });
+
+                init();
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (error) {
+                console.log('An error happened!', error.currentTarget.statusText, error.currentTarget.responseURL);
+            });
+    }
 
     function init() {
-        // Böngésző ablakméret lekérése és méretarány számítása
+        counter = 0;
         HEIGHT = window.innerHeight;
         WIDTH = window.innerWidth;
         aspectRatio = WIDTH / HEIGHT;
 
-        // Színtér létrehozása
         scene = new THREE.Scene();
-
-        // Renderer létrehozása és DOM-hoz adása
         renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setSize(WIDTH, HEIGHT);
         renderer.setClearColor(0x000000, 1);
@@ -63,7 +143,9 @@
 
         // Kamera létrehozása és vetítési paramétereinek beállítása
         camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
-        camera.position.z = 15;
+        camera.position.z = 300;
+        camera.position.y = 100;
+        camera.maxDistance = Infinity;
 
         //
         // Föld textúra képek:
@@ -73,12 +155,31 @@
 
         saturnGroup = new THREE.Group();
         const textureLoader = new THREE.TextureLoader();
+        const sunTexture = textureLoader.load('assets/texture/8k_sun.jpg');
         const saturnTexture = textureLoader.load('assets/texture/8k_saturn.jpg');
         const saturnRingTexture = textureLoader.load('assets/texture/saturn_circle.png');
         const wheelTexture = textureLoader.load('assets/texture/tire.png');
+        const groundTexture = textureLoader.load('assets/texture/4k_ceres_fictional.jpg');
+        const backgroundTexture = textureLoader.load('assets/texture/bg.jpg');
+
+        const sun = new THREE.SphereGeometry(8, 80, 80);
+        const sunMaterial = new THREE.MeshPhongMaterial({
+            emissive: 0xF1FF33,
+            map: sunTexture
+        });
+        sunMesh = new THREE.Mesh(sun, sunMaterial);
+        sunMesh.position.x = 400;
+        sunMesh.position.y = 400;
+        sunMesh.position.z = 200;
+        sunLight = new THREE.PointLight(0xffffff, 1);
+        sunLight.castShadow = true;
+        sunMesh.add(sunLight);
+        isDay = true;
+        scene.add(sunMesh);
 
         const saturn = new THREE.SphereGeometry(8, 80, 80);
         const saturnMaterial = new THREE.MeshPhongMaterial({
+
             map: saturnTexture
         });
         const saturnMesh = new THREE.Mesh(saturn, saturnMaterial);
@@ -93,17 +194,23 @@
         saturnRingMesh.rotation.x = THREE.MathUtils.degToRad(90);
         saturnGroup.add(saturnRingMesh);
         saturnGroup.add(saturnMesh);
-        //scene.add(saturnGroup);
+        //Szaturnusz pozicionálása
+        saturnGroup.position.y = 300;
+        saturnGroup.position.x = -160;
+        saturnGroup.position.z = -360;
+        scene.add(saturnGroup);
 
 
         //holdjáró obj
+        const moonWalkerAxesHelper = new THREE.AxesHelper(10);
+
         moonWalkerGroup = new THREE.Group();
+        carGroundGroup = new THREE.Group();
+
         const moonWalkerBodyGroup = new THREE.Group();
         const moonWalkerSuspensionGroup = new THREE.Group();
         const moonWalkerWheelsGroup = new THREE.Group();
 
-        //test
-        const moonWalkerAxesHelper = new THREE.AxesHelper(10);
         const moonWalkerBody = new THREE.BoxGeometry(4, 6, 2, 4)
         const moonWalkerBodyMaterial = new THREE.MeshBasicMaterial({
             color: 0x888888
@@ -131,7 +238,7 @@
         moonWalkerSuspensionMesh2.position.y = -0.35;
         moonWalkerSuspensionMesh2.position.x = 2;
 
-        const moonWalkerSuspension3 = new THREE.BoxGeometry(0.5,9, 0.5, 4)
+        const moonWalkerSuspension3 = new THREE.BoxGeometry(0.5, 9, 0.5, 4)
         const moonWalkerSuspensionMaterial3 = new THREE.MeshBasicMaterial({
             color: 0x222222
         });
@@ -141,7 +248,7 @@
         moonWalkerSuspensionMesh3.position.x = -2;
 
         //kerekek elé 4x
-        const moonWalkerSuspension4 = new THREE.BoxGeometry(0.5 ,2, 0.5, 4)
+        const moonWalkerSuspension4 = new THREE.BoxGeometry(0.5, 2, 0.5, 4)
         const moonWalkerSuspensionMaterial4 = new THREE.MeshBasicMaterial({
             color: 0xffffff
         });
@@ -150,7 +257,7 @@
         moonWalkerSuspensionMesh4.position.x = -2.5;
         moonWalkerSuspensionMesh4.position.z = 4.25;
 
-        const moonWalkerSuspension5 = new THREE.BoxGeometry(0.5 ,2, 0.5, 4)
+        const moonWalkerSuspension5 = new THREE.BoxGeometry(0.5, 2, 0.5, 4)
         const moonWalkerSuspensionMaterial5 = new THREE.MeshBasicMaterial({
             color: 0xffffff
         });
@@ -159,7 +266,7 @@
         moonWalkerSuspensionMesh5.position.x = -2.5;
         moonWalkerSuspensionMesh5.position.z = -4.25;
 
-        const moonWalkerSuspension6 = new THREE.BoxGeometry(0.5 ,2, 0.5, 4)
+        const moonWalkerSuspension6 = new THREE.BoxGeometry(0.5, 2, 0.5, 4)
         const moonWalkerSuspensionMaterial6 = new THREE.MeshBasicMaterial({
             color: 0xffffff
         });
@@ -168,7 +275,7 @@
         moonWalkerSuspensionMesh6.position.x = 2.5;
         moonWalkerSuspensionMesh6.position.z = -4.25;
 
-        const moonWalkerSuspension7 = new THREE.BoxGeometry(0.5 ,2, 0.5, 4)
+        const moonWalkerSuspension7 = new THREE.BoxGeometry(0.5, 2, 0.5, 4)
         const moonWalkerSuspensionMaterial7 = new THREE.MeshBasicMaterial({
             color: 0xffffff
         });
@@ -229,29 +336,124 @@
 
         moonWalkerWheelsGroup.add(moonWalkerWheelMesh1, moonWalkerWheelMesh2, moonWalkerWheelMesh3, moonWalkerWheelMesh4);
 
-        moonWalkerGroup.add(moonWalkerBodyGroup, moonWalkerSuspensionGroup, moonWalkerWheelsGroup, moonWalkerAxesHelper);
-        scene.add(moonWalkerGroup);
+        const moonWalkerLight = new THREE.PointLight(0xfa9f5a, 1, 100, 2);
+        moonWalkerLight.position.set(0, 5, 12);
+        moonWalkerLight.angle = 60;
+        isCarLightOn = true;
 
+        moonWalkerGroup.add(moonWalkerBodyGroup, moonWalkerSuspensionGroup, moonWalkerWheelsGroup, moonWalkerLight, moonWalkerAxesHelper);
+        //szintbe hozás
+        moonWalkerGroup.position.y = 3.6;
+        const carGroundGroupAxisHelper = new THREE.AxesHelper(100, 100, 100);
+        carGroundGroup.add(moonWalkerGroup, carGroundGroupAxisHelper);
+        scene.add(carGroundGroup);
 
+        //Épület
+        buildingGroup = new THREE.Group();
 
-        // Ambiens fény
+        const buildingBody = new THREE.BoxGeometry(70, 25, 75);
+        const buildingBodyMaterial = new THREE.MeshPhongMaterial();
+        const buildingMesh = new THREE.Mesh(buildingBody, buildingBodyMaterial);
+
+        const buildingTop = new THREE.SphereGeometry(25, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        const buidingTopMaterial = new THREE.MeshPhongMaterial({
+            color: 0x96b1ff,
+            transparent: true,
+            opacity: 0.35
+        });
+        const buldingTopMesh = new THREE.Mesh(buildingTop, buidingTopMaterial);
+        buldingTopMesh.position.y = 25 / 2;
+        const buildingTopGroup = new THREE.Group();
+        buildingTopGroup.add(buldingTopMesh);
+
+        const buildingTelescope = new THREE.CylinderGeometry(3, 3, 30, 8, 1, true);
+        const buildingTelescopeMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4f515c
+        });
+        const buildingTelescopeMesh = new THREE.Mesh(buildingTelescope, buildingTelescopeMaterial);
+        buildingTelescopeMesh.position.y = (30 / 2) + (25 / 2) + 2;
+        const telescopeGroup = new THREE.Group();
+        telescopeGroup.add(buildingTelescopeMesh);
+
+        const buildingLens = new THREE.SphereGeometry(3, 6, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+        const buidingLensMaterial = new THREE.MeshPhongMaterial({
+            color: 0x96b1ff,
+            transparent: true,
+            opacity: 0.35
+        });
+        const buldingLensMesh = new THREE.Mesh(buildingLens, buidingLensMaterial);
+        buldingLensMesh.position.y = (25 / 2) + 30;
+        telescopeGroup.add(buldingLensMesh);
+        telescopeGroup.rotation.z = THREE.MathUtils.degToRad(45);
+        buildingTopGroup.add(telescopeGroup);
+
+        buildingGroup.add(buildingMesh, buildingTopGroup);
+        buildingGroup.position.y = 25 / 2;
+        buildingGroup.position.z = -50;
+
+        scene.add(buildingGroup);
+
+        //Terep
+        groundGroup = new THREE.Group();
+
+        groundTexture.anisotropy = 32
+        groundTexture.repeat.set(2, 6)
+        groundTexture.wrapT = THREE.RepeatWrapping
+        groundTexture.wrapS = THREE.RepeatWrapping
+
+        const ground = new THREE.PlaneBufferGeometry(10000, 10000);
+        const groundMaterial = new THREE.MeshPhongMaterial({
+            map: groundTexture
+        });
+        const groundMesh = new THREE.Mesh(ground, groundMaterial);
+        groundMesh.rotation.x = THREE.MathUtils.degToRad(-90);
+        groundGroup.add(groundMesh);
+        scene.add(groundMesh)
+        //rakéta pozícionálása
+        groundGroup.add(rocketGroup);
+        rocketGroup.rotation.z = THREE.MathUtils.degToRad(90);
+        rocketGroup.position.z = -550;
+        rocketGroup.position.y = 150;
+        scene.add(groundGroup);
+
+        //rakétameghajtás láng
+        rocketFireGroup = new THREE.Group();
+        rocketFire = new THREE.TorusKnotGeometry(1, 2.2, 59, 5, 7, 7);
+        const rocketFireMaterial = new THREE.MeshBasicMaterial({color: 0xf80000});
+        const rocketFireMesh = new THREE.Mesh(rocketFire, rocketFireMaterial);
+        rocketFireMesh.position.y = -25;
+        rocketFireGroup.add(rocketFireMesh);
+        rocketGroup.add(rocketFireGroup);
+
+        scene.background = backgroundTexture;
+
+        infoElement = document.getElementById('info');
+
         let ambientLight = new THREE.AmbientLight(0x202020, 1);
         scene.add(ambientLight);
-        // Pontfény
-        let pLight = new THREE.PointLight(0xffffff, 1);
-        pLight.position.set(0, 0, 15);
-        scene.add(pLight);
+
+        ctrl = new meshController();
+        addControlGui(ctrl);
 
         controls = new TrackballControls(camera, renderer.domElement);
         controls.rotateSpeed = 5.0;
         controls.panSpeed = 1.0;
 
-        // Az ablak átméretezése esetén visszahívható függvény megadása
         window.addEventListener('resize', handleWindowResize, false);
+
+        animate();
+
+    }
+
+    function switchVisibility() {
+        if (window.getComputedStyle(infoElement).getPropertyValue('visibility') === 'visible') {
+            infoElement.style.visibility = 'hidden';
+        } else {
+            infoElement.style.visibility = 'visible';
+        }
     }
 
     function handleWindowResize() {
-        // Az ablak átméretezése esetén a kamera vetítési paraméterek újraszámolása
         HEIGHT = window.innerHeight;
         WIDTH = window.innerWidth;
         renderer.setSize(WIDTH, HEIGHT);
@@ -261,16 +463,64 @@
         render();
     }
 
+    function randomMove() {
+        let buildingTopGroup = buildingGroup.children[1];
+        if (Math.random() > 0.5) {
+            buildingTopGroup.rotation.y = THREE.MathUtils.degToRad(Math.random() * 100);
+        } else {
+            let teleGroup = buildingTopGroup.children[1]
+            teleGroup.rotation.z = THREE.MathUtils.degToRad(Math.random() * 100);
+        }
+    }
+
     function animate() {
+        counter += 1;
         requestAnimationFrame(animate);
         controls.update();
+        saturnGroup.rotation.y += 0.01;
+        rocketFireGroup.rotation.y += 0.1;
+        groundGroup.rotation.y += 0.01;
 
-        //if( mesh ) {
-        // Ha már létezik az objektum...
-        //saturnMesh.rotation.y += 0.01;
-        //}
+        if (counter > (10 * 60)) {
+            randomMove();
+            counter = 0;
+        } //kb 10mp
 
+        controls.update();
         render();
+    }
+
+    let meshController = function () {
+        document.addEventListener('keydown', (e) => {
+            if (e.code === "KeyW") {
+                moonWalkerGroup.position.z += 0.5;
+            }
+            if (e.code === "KeyA") {
+                moonWalkerGroup.rotation.y -= THREE.MathUtils.degToRad(10);
+            }
+            if (e.code === "KeyS") {
+                moonWalkerGroup.position.z -= 0.5;
+            }
+            if (e.code === "KeyD") {
+                moonWalkerGroup.rotation.y += THREE.MathUtils.degToRad(10);
+            }
+            if (e.code === "KeyI") {
+                switchVisibility();
+            }
+        })
+
+    };
+
+    function addControlGui(controlObject) {
+        let gui = new GUI({autoPlace: false});
+        gui.add(guiParams, 'dayNight').name('Nappal/Este');
+        gui.add(guiParams, 'carLight').name('Auto világítás ON/OFF');
+        gui.add(guiParams, 'buildingVisibility').name('Épület megjelenítés ON/OFF');
+
+        gui.domElement.style.position = 'absolute';
+        gui.domElement.style.top = '0px';
+        gui.domElement.style.right = '0px';
+        document.body.appendChild(gui.domElement);
     }
 
     function render() {
@@ -278,5 +528,12 @@
     }
 
 </script>
+<div id="info"><pre>
+Skrivanek Dávid
+ITF7BZ
+Mérnökinformatika BSC (levelező)
+2022/2023 1. félév
+</pre>
+</div>
 </body>
 </html>

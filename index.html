@@ -3,7 +3,7 @@
 
 <head>
     <meta charset=utf-8>
-    <title>ThreeJs TextureLoader Example</title>
+    <title>Skrivanek Dávid Számgraf beadandó</title>
     <style>
         body {
             margin: 0;
@@ -25,6 +25,18 @@
             background: gray;
             opacity: .55;
         }
+        #controls {
+            position: absolute;
+            top: 10%;
+            right: 0;
+            width: min-content;
+            color: whitesmoke;
+            display: inline-flex;
+            text-align: left;
+            z-index: 100;
+            background: gray;
+            opacity: .90;
+        }
     </style>
 </head>
 
@@ -41,6 +53,7 @@
         "stats": "./js-r143/examples/jsm/libs/stats.module.js"
     }
 }
+
 
 
 
@@ -98,7 +111,6 @@
             }
         },
         buildingVisibility: function () {
-            //buildingGroup
             buildingGroup.visible = !buildingGroup.visible
         }
     };
@@ -116,6 +128,8 @@
                     if (child instanceof THREE.Mesh) {
                         console.log('mesh found in loaded group');
                         child.material = new THREE.MeshPhongMaterial({color: 0x2080f0, side: THREE.DoubleSide});
+                        child.castShadow = true;
+                        child.receiveShadow = true;
                     }
                 });
 
@@ -139,6 +153,7 @@
         renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setSize(WIDTH, HEIGHT);
         renderer.setClearColor(0x000000, 1);
+        renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
         // Kamera létrehozása és vetítési paramétereinek beállítása
@@ -168,14 +183,26 @@
             map: sunTexture
         });
         sunMesh = new THREE.Mesh(sun, sunMaterial);
-        sunMesh.position.x = 400;
+        sunMesh.position.x = 800;
         sunMesh.position.y = 400;
         sunMesh.position.z = 200;
-        sunLight = new THREE.PointLight(0xffffff, 1);
+        sunLight = new THREE.SpotLight(0xffffff, 1);
         sunLight.castShadow = true;
-        sunMesh.add(sunLight);
+        sunLight.distance = 3000;
+        sunLight.shadow.camera.near = 0.1;
+        sunLight.shadow.camera.far = 512;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        //sunLight.angle = Math.PI; //ezzel telibe sütne a nap de nem castolna shadow-t :(((
+
+        sunLight.shadow.camera.far = 3000;
+        const d = 600;
+        sunLight.shadow.camera.left = -d;
+        sunLight.shadow.camera.right = d;
+        sunLight.shadow.camera.top = d;
+        sunLight.shadow.camera.bottom = -d;
         isDay = true;
-        scene.add(sunMesh);
+
 
         const saturn = new THREE.SphereGeometry(8, 80, 80);
         const saturnMaterial = new THREE.MeshPhongMaterial({
@@ -202,7 +229,7 @@
 
 
         //holdjáró obj
-        const moonWalkerAxesHelper = new THREE.AxesHelper(10);
+        //const moonWalkerAxesHelper = new THREE.AxesHelper(10);
 
         moonWalkerGroup = new THREE.Group();
         carGroundGroup = new THREE.Group();
@@ -341,11 +368,11 @@
         moonWalkerLight.angle = 60;
         isCarLightOn = true;
 
-        moonWalkerGroup.add(moonWalkerBodyGroup, moonWalkerSuspensionGroup, moonWalkerWheelsGroup, moonWalkerLight, moonWalkerAxesHelper);
+        moonWalkerGroup.add(moonWalkerBodyGroup, moonWalkerSuspensionGroup, moonWalkerWheelsGroup, moonWalkerLight);
         //szintbe hozás
         moonWalkerGroup.position.y = 3.6;
-        const carGroundGroupAxisHelper = new THREE.AxesHelper(100, 100, 100);
-        carGroundGroup.add(moonWalkerGroup, carGroundGroupAxisHelper);
+        //const carGroundGroupAxisHelper = new THREE.AxesHelper(100, 100, 100);
+        carGroundGroup.add(moonWalkerGroup);
         scene.add(carGroundGroup);
 
         //Épület
@@ -354,6 +381,8 @@
         const buildingBody = new THREE.BoxGeometry(70, 25, 75);
         const buildingBodyMaterial = new THREE.MeshPhongMaterial();
         const buildingMesh = new THREE.Mesh(buildingBody, buildingBodyMaterial);
+        buildingMesh.castShadow = true;
+        buildingMesh.receiveShadow = true;
 
         const buildingTop = new THREE.SphereGeometry(25, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
         const buidingTopMaterial = new THREE.MeshPhongMaterial({
@@ -361,10 +390,12 @@
             transparent: true,
             opacity: 0.35
         });
-        const buldingTopMesh = new THREE.Mesh(buildingTop, buidingTopMaterial);
-        buldingTopMesh.position.y = 25 / 2;
+        const buildingTopMesh = new THREE.Mesh(buildingTop, buidingTopMaterial);
+        buildingTopMesh.castShadow = true;
+        buildingTopMesh.receiveShadow = true;
+        buildingTopMesh.position.y = 25 / 2;
         const buildingTopGroup = new THREE.Group();
-        buildingTopGroup.add(buldingTopMesh);
+        buildingTopGroup.add(buildingTopMesh);
 
         const buildingTelescope = new THREE.CylinderGeometry(3, 3, 30, 8, 1, true);
         const buildingTelescopeMaterial = new THREE.MeshPhongMaterial({
@@ -372,6 +403,8 @@
         });
         const buildingTelescopeMesh = new THREE.Mesh(buildingTelescope, buildingTelescopeMaterial);
         buildingTelescopeMesh.position.y = (30 / 2) + (25 / 2) + 2;
+        buildingTelescopeMesh.castShadow = true;
+        buildingTelescopeMesh.receiveShadow = true;
         const telescopeGroup = new THREE.Group();
         telescopeGroup.add(buildingTelescopeMesh);
 
@@ -389,8 +422,10 @@
 
         buildingGroup.add(buildingMesh, buildingTopGroup);
         buildingGroup.position.y = 25 / 2;
-        buildingGroup.position.z = -50;
-
+        buildingGroup.position.z = 70;
+        buildingGroup.position.x = 100;
+        buildingGroup.castShadow = true;
+        buildingGroup.receiveShadow = true;
         scene.add(buildingGroup);
 
         //Terep
@@ -407,13 +442,16 @@
         });
         const groundMesh = new THREE.Mesh(ground, groundMaterial);
         groundMesh.rotation.x = THREE.MathUtils.degToRad(-90);
-        groundGroup.add(groundMesh);
+        groundMesh.receiveShadow = true;
+        //groundGroup.add(groundMesh);
         scene.add(groundMesh)
         //rakéta pozícionálása
         groundGroup.add(rocketGroup);
         rocketGroup.rotation.z = THREE.MathUtils.degToRad(90);
         rocketGroup.position.z = -550;
         rocketGroup.position.y = 150;
+        rocketGroup.castShadow = true;
+        rocketGroup.receiveShadow = true;
         scene.add(groundGroup);
 
         //rakétameghajtás láng
@@ -424,6 +462,18 @@
         rocketFireMesh.position.y = -25;
         rocketFireGroup.add(rocketFireMesh);
         rocketGroup.add(rocketFireGroup);
+
+        const testLight = new THREE.PointLight(0xff0000, 1);
+        testLight.lookAt(buildingGroup);
+        testLight.position.z = 30;
+        testLight.position.y = 40;
+        testLight.position.x = 30;
+        testLight.castShadow = true;
+        //scene.add(testLight);
+
+        sunLight.lookAt(buildingGroup);
+        sunMesh.add(sunLight);
+        scene.add(sunMesh);
 
         scene.background = backgroundTexture;
 
@@ -511,12 +561,11 @@
 
     };
 
-    function addControlGui(controlObject) {
+    function addControlGui() {
         let gui = new GUI({autoPlace: false});
         gui.add(guiParams, 'dayNight').name('Nappal/Este');
         gui.add(guiParams, 'carLight').name('Auto világítás ON/OFF');
         gui.add(guiParams, 'buildingVisibility').name('Épület megjelenítés ON/OFF');
-
         gui.domElement.style.position = 'absolute';
         gui.domElement.style.top = '0px';
         gui.domElement.style.right = '0px';
@@ -533,6 +582,13 @@ Skrivanek Dávid
 ITF7BZ
 Mérnökinformatika BSC (levelező)
 2022/2023 1. félév
+</pre>
+</div>
+<div id="controls"><pre>
+W, S: Holdjáró mozgatása
+a z tengelyen.
+A, D: Holdjáró forgatása
+I: Információk elrejtése
 </pre>
 </div>
 </body>
